@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        html, body{
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        body{
+            background-color: rgb(1, 19, 31);
+        }
+
+        canvas{
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <canvas canvas></canvas>
+    <script>
+        const canvas = document.querySelector("[canvas]")
+        const ctx = canvas.getContext('2d')
+
+        let allUsers = []
+        const img = [new Image(), new Image(), new Image()]
+        let isMoving = false
+
+        let datas = [
+            {
+                id: 1,
+                name: "Marco",
+                imageSource: 'assets/images/img-3.png',
+                gX: 150,
+                gY: 150, 
+                w: 150,
+                h: 150,
+                hover: true,
+            },
+            {
+                id: 2,
+                name: "Willy",
+                imageSource: 'assets/images/img-2.png',
+                gX: 900,
+                gY: 200, 
+                w: 150,
+                h: 150,
+                hover: false,
+            },
+            {
+                id: 3,
+                name: "Johan",
+                imageSource: 'assets/images/img-1.png',
+                gX: 500,
+                gY: 400, 
+                w: 150,
+                h: 150,
+                hover: false,
+            },
+        ]
+
+        let editDatas = {
+            isMoving: false,
+            movingNode: null,
+            initialValues: null,
+            additionalValues: null
+        }
+
+        datas.forEach((data, index) => {
+            img[index].src = data.imageSource
+        })
+
+        class Draw{
+            /**
+             * 
+             * @param {CanvasRenderingContext2D} ctx 
+             */
+            constructor(ctx) {
+                this.ctx = ctx
+            }
+
+            /**
+             * 
+             * @param {any} obj 
+             * @param {{x: number; y: number;}} point 
+             * @returns boolean
+             */
+
+            isUserPoint(obj, point) {
+                if (obj == null || obj == undefined) {
+                    return false
+                }
+                let lineWidth = 5
+                let x = obj.gX - window.screenX
+                let y = obj.gY - window.screenY
+                let r = obj.w / 2 + lineWidth / 2
+                let path = new Path2D()
+                path.ellipse(x, y, r, r, 0, 0, Math.PI * 2, true)
+                let result = this.ctx.isPointInPath(path, point.x, point.y)
+                return result
+            }
+            
+            /**
+             * 
+             * @param {any} obj 
+             * @returns void
+             */
+
+            drawBorder(obj) {
+                if (obj == null || obj == undefined) {
+                    return
+                }
+                let lineWidth = 5
+                let x = obj.gX - window.screenX
+                let y = obj.gY - window.screenY
+                let r = obj.w / 2 + lineWidth / 2
+                let path = new Path2D()
+                path.ellipse(x, y, r, r, 0, 0, Math.PI * 2, true)
+                this.ctx.strokeStyle = "blue"
+                this.ctx.lineWidth = lineWidth
+                this.ctx.stroke(path)
+            }
+
+            /**
+             * 
+             * @param {any} obj 
+             * @returns void
+             */
+
+            drawImage(obj) {
+                if (obj == null || obj == undefined) {
+                return
+                }
+                let x = obj.gX - window.screenX
+                let y = obj.gY - window.screenY
+                let r = obj.w / 2
+                let path = new Path2D()
+                path.ellipse(x, y, r, r, 0, 0, Math.PI * 2, true)
+                this.ctx.save()
+                this.ctx.clip(path)
+                this.ctx.fillStyle = 'white'
+                this.ctx.fill(path)
+                this.ctx.beginPath()
+                this.ctx.drawImage(img[obj.id - 1], x - obj.w / 2, y - obj.h / 2, obj.w, obj.h)
+                this.ctx.closePath()
+                this.ctx.restore()
+            }
+
+            /**
+             * 
+             * @param {any[]} users 
+             * @returns 
+             */
+
+            drawLines(users) {
+                if (users.length <= 1) {
+                    return
+                }
+                let fusr = users[0]
+                let x = fusr.gX - window.screenX
+                let y = fusr.gY - window.screenY
+                this.ctx.beginPath()
+                this.ctx.strokeStyle = '#fff'
+                this.ctx.lineWidth = 12
+                this.ctx.moveTo(x, y)
+            
+                const user = users[1];
+                let ax = user.gX - window.screenX
+                let ay = user.gY - window.screenY
+                this.ctx.lineTo(ax, ay)
+            
+                const buser = users[2];
+                let bx = buser.gX - window.screenX
+                let by = buser.gY - window.screenY
+                this.ctx.lineTo(bx, by)
+                this.ctx.closePath()
+                this.ctx.stroke()
+            }
+        }
+
+        let drawer = new Draw(ctx) 
+
+        setCanvasSize()
+        push()
+
+        setInterval(() => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            if (datas.length > 0) {
+                drawer.drawLines(datas)
+                datas.forEach((user) => {
+                    drawer.drawImage(user)
+                })
+                datas.forEach((user) => {
+                    if (user.hover) {
+                        drawer.drawBorder(user)
+                    }
+                })
+            }
+
+        }, 10);
+
+        setInterval(pull, 10);
+
+        function setCanvasSize() {
+            canvas.height = canvas.offsetHeight
+            canvas.width = canvas.offsetWidth
+        }
+
+        function push() {
+            localStorage.setItem('users', JSON.stringify(datas))
+            localStorage.setItem('edit', JSON.stringify(editDatas))
+        }
+
+        function pull() {
+            let jsonUsers = localStorage.getItem('users')
+            let jsonEdit = localStorage.getItem('edit')
+            if (jsonUsers) {
+                datas = JSON.parse(jsonUsers)
+            }
+            if (jsonEdit) {
+                editDatas = JSON.parse(jsonEdit)
+            }
+        }
+
+        document.addEventListener('resize', setCanvasSize)
+
+        window.addEventListener('beforeunload', (e) => {
+            
+        })
+
+        document.addEventListener('mousedown', HandleMouseDown)
+
+        window.addEventListener('mouseup', HandleMouseUp)
+
+        document.addEventListener('mousemove', HandleMouseMove)
+
+        function HandleMouseDown(e) {
+            let point = {x: e.offsetX, y: e.offsetY}
+            if (!editDatas.isMoving) {
+                let found = false
+                datas.forEach((data) => {
+                    if(drawer.isUserPoint(data, point) && !found){
+                        editDatas.isMoving = true
+                        editDatas.movingNode = data.id
+                        editDatas.initialValues = {x: data.gX, y: data.gY}
+                        editDatas.additionalValues = {x: 0, y: 0}
+                        found = true
+                    }
+                })
+                push()
+            }
+        }
+
+        function HandleMouseUp(e) {
+            if (editDatas.isMoving) {
+                editDatas.isMoving = false
+                editDatas.initialValues = {x: 0, y: 0}
+                editDatas.additionalValues = {x: 0, y: 0}
+                push()
+            }
+        }
+
+        function HandleMouseMove(e) {
+            let point = {x: e.offsetX, y: e.offsetY}
+            let movPoint = {x: e.movementX, y: e.movementY}
+            
+            if (!editDatas.isMoving) {
+                datas.forEach((data) => {
+                    if(drawer.isUserPoint(data, point)){
+                        data.hover = true
+                    }else{
+                        data.hover = false
+                    }
+                })
+            }else{
+                let id = editDatas.movingNode
+                editDatas.initialValues.x += movPoint.x
+                editDatas.initialValues.y += movPoint.y
+                let initial = editDatas.initialValues
+                let additional = editDatas.additionalValues
+                let x = initial.x + additional.x
+                let y = initial.y + additional.y
+                datas.forEach((data) => {
+                    if(data.id == id) {
+                        data.gX = x
+                        data.gY = y
+                    }
+                })
+            }
+            push()
+        }
+
+    </script>
+</body>
+</html>
